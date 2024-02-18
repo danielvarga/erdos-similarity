@@ -8,7 +8,7 @@ import gurobipy
 
 def parse_arguments():
     # Create the parser
-    parser = argparse.ArgumentParser(description="Tool Description Here")
+    parser = argparse.ArgumentParser(description="Attempts at the Erdos Similarity Conjecture")
 
     # Add arguments, all as integers
     parser.add_argument('--n', type=int, required=True, help='n')
