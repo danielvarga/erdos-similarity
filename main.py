@@ -125,6 +125,7 @@ env.setParam('Seed', int(random_seed))
 
 if enforced_value == 1:
     constraints.append(cp.sum(A[:enforced_length]) == enforced_length)
+    # constraints.append(cp.sum(A[enforced_length: 2 * enforced_length - 3]) == 0)
 else:
     constraints.append(cp.sum(A[:enforced_length]) == 0)
 
@@ -134,16 +135,8 @@ ip = cp.Problem(cp.Minimize(cp.sum(A)), constraints)
 ip.solve(solver="GUROBI", verbose=verbose, env=env)
 
 
-def normalize(A):
-    # let's put a zero at the end so that we don't have to bother with wraparound
-    for i in range(1, N):
-        if (A[i - 1] == 0) and (A[i] == 1):
-            break
-    A = A[i:].tolist() + A[:i].tolist()
-    assert A[0] == 1
-    assert A[-1] == 0
-    A = np.array(A)
 
+def compact(A):
     lengths = []
     positions = []
     current_length = 0
@@ -158,6 +151,20 @@ def normalize(A):
     if current_length > 0:
         lengths.append(current_length)
     lengths = np.array(lengths)
+    positions = np.array(positions)
+    return lengths, positions
+
+
+def normalize(A):
+    # let's put a zero at the end so that we don't have to bother with wraparound
+    for i in range(1, N):
+        if (A[i - 1] == 0) and (A[i] == 1):
+            break
+    A = A[i:].tolist() + A[:i].tolist()
+    assert A[0] == 1
+    assert A[-1] == 0
+    A = np.array(A)
+    lengths, positions = compact(A)
     maximal_length = max(lengths)
     start_of_first_longest = None
     for i in range(len(lengths)):
@@ -168,11 +175,15 @@ def normalize(A):
     return np.array(A)
 
 
-
 A = A.value.astype(int)
 A = normalize(A)
 
 print(f"{int(ip.value)}\t" + " ".join(map(str, A)))
+
+lengths, positions = compact(A)
+for length, position in zip(lengths, positions):
+    print(f"{position}={length}", end="\t")
+print()
 
 # i wanna run it in batch, just collecting many solutions
 exit()
