@@ -5,7 +5,10 @@ import cvxpy as cp
 import gurobipy
 
 
-m = 15
+m, = sys.argv[1:]
+
+m = int(m)
+
 
 ALIVE, DEAD = True, False
 
@@ -46,7 +49,9 @@ def add_to_collection(total_collection, a):
 
 current_collection = ((1, ), )
 total_collection = set()
+iteration = 0
 while len(current_collection) > 0:
+    iteration += 1
     next_collection = set()
     for a in current_collection:
         mini_collection, status = extend(a, m)
@@ -55,10 +60,38 @@ while len(current_collection) > 0:
                 add_to_collection(total_collection, b)
         else:
             next_collection |= set(mini_collection)
-    print("ongoing", len(next_collection), "harvested", len(total_collection))
+    print("iteration", iteration, "ongoing", len(next_collection), "harvested", len(total_collection), file=sys.stderr)
     current_collection = next_collection
 
 
-print(len(total_collection))
-for a in sorted(total_collection):
-    print(list(sorted(a)))
+Ts = total_collection
+
+print("final number of sets", len(Ts), file=sys.stderr)
+
+
+A = cp.Variable(m, boolean=True, name="A")
+constraints = []
+for x in range(m):
+    for T in Ts:
+        # A + T Minkowski sum covers x.
+        # equivalently A intersects T_prime
+        T_prime = [(x - y) % m for y in T]
+        constraint = sum(A[y] for y in T_prime) >= 1
+        constraints.append(constraint)
+
+
+def pretty(A):
+    return "|" + "".join(map(str, A)).replace("0", ".").replace("1", "X") + "|"
+
+
+random_seed = 1
+verbose = False
+env = gurobipy.Env()
+env.setParam('Seed', int(random_seed))
+
+ip = cp.Problem(cp.Minimize(cp.sum(A)), constraints)
+ip.solve(solver="GUROBI", verbose=verbose, env=env)
+
+A = A.value.astype(int)
+
+print(f"modulus {m}\t|A| {sum(A)}\tA {pretty(A)}")
