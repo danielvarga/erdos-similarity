@@ -66,7 +66,54 @@ while len(current_collection) > 0:
 
 Ts = total_collection
 
+
+def minkowski(A, B):
+    A_1 = np.nonzero(A)[0]
+    B_1 = np.nonzero(B)[0]
+    ms = (A_1[None, :] + B_1[:, None]) % m
+    ApB_1 = np.unique(ms.flatten())
+    ApB = np.zeros_like(A)
+    ApB[ApB_1] = 1
+    return ApB
+
+
+def set_to_vec(T):
+    v = np.zeros(m, dtype=int)
+    v[list(T)] = 1
+    return v
+
+
+def verify(A, Ts):
+    for T_set in Ts:
+        T = set_to_vec(T_set)
+        if not np.all(minkowski(A, T) == 1):
+            return False
+    return True
+
+
+def pretty(A):
+    assert np.all(np.logical_or(A == 0, A == 1))
+    return "|" + "".join(map(str, A)).replace("0", ".").replace("1", "X") + "|"
+
+
 print("final number of sets", len(Ts), file=sys.stderr)
+
+
+def find_optimal_interval_pair(Ts):
+    for size in range(1, m):
+        for a1_end in range(size, 0, -1):
+            for a2_start in range(a1_end + 1, m):
+                a2_end = a2_start + size - a1_end
+                if not 0 <= a2_end <= m:
+                    continue
+                A = np.zeros(m, dtype=int)
+                A[:a1_end] = 1
+                A[a2_start: a2_end] = 1
+                if verify(A, Ts):
+                    return A
+
+
+# A = find_optimal_interval_pair(Ts) ; print(f"modulus {m}\t|A| {sum(A)}\tA {pretty(A)}") ; exit()
 
 
 A = cp.Variable(m, boolean=True, name="A")
@@ -80,12 +127,8 @@ for x in range(m):
         constraints.append(constraint)
 
 
-def pretty(A):
-    return "|" + "".join(map(str, A)).replace("0", ".").replace("1", "X") + "|"
-
-
 random_seed = 1
-verbose = False
+verbose = True
 env = gurobipy.Env()
 env.setParam('Seed', int(random_seed))
 
@@ -93,5 +136,7 @@ ip = cp.Problem(cp.Minimize(cp.sum(A)), constraints)
 ip.solve(solver="GUROBI", verbose=verbose, env=env)
 
 A = A.value.astype(int)
+
+assert verify(A, Ts)
 
 print(f"modulus {m}\t|A| {sum(A)}\tA {pretty(A)}")
