@@ -63,19 +63,6 @@ def minimal_sets(m):
     return Ts
 
 
-Ts_dict = {}
-for m in range(2, 46):
-    Ts = minimal_sets(m)
-    Ts_dict[m] = Ts
-    print(f"{m}\t{len(minimal_sets(m))}")
-
-
-import pickle
-with open("minimal_sets.pkl", "wb") as f:
-    pickle.dump(Ts_dict, f)
-exit()
-
-
 def minkowski(A, B):
     A_1 = np.nonzero(A)[0]
     B_1 = np.nonzero(B)[0]
@@ -97,6 +84,30 @@ def gap(T):
     diff = T[1:] - T[:-1]
     last_diff = T[0] + m - T[-1]
     return max((diff.max(), last_diff))
+
+
+Ts_dict = {}
+for m in range(41, 61, 2):
+    Ts = minimal_sets(m)
+    Ts_dict[m] = Ts
+    gaps = []
+    for T in Ts:
+        gaps.append(gap(T))
+    gaps = np.array(gaps)
+    if len(gaps) >= 10:
+        tenth = np.sort(gaps)[-10]
+    else:
+        tenth = np.sort(gaps)[0]
+    print(f"q={m}\t|Ts|={len(minimal_sets(m))}\ttenth={tenth}\tlargest={gaps.max()}")
+    for T in Ts:
+        if gap(T) >= tenth:
+            print(gap(T), tuple(T))
+exit()
+
+import pickle
+with open("minimal_sets.pkl", "wb") as f:
+    pickle.dump(Ts_dict, f)
+exit()
 
 
 def my_hist(data):
