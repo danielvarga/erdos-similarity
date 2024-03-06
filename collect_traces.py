@@ -28,6 +28,13 @@ def rotate(a, k, m):
     return tuple(a.tolist())
 
 
+def gap(T, m):
+    T = np.sort(np.array(list(T)))
+    diff = T[1:] - T[:-1]
+    last_diff = T[0] + m - T[-1]
+    return max((diff.max(), last_diff))
+
+
 def add_to_collection(total_collection, a, m):
     needed = True
     # forall k rotation, forall c in total_collection
@@ -63,6 +70,28 @@ def minimal_sets(m):
     return Ts
 
 
+# gap must be at least k
+def holey_minimal_sets(m, k):
+    current_collection = ((1, ), )
+    total_collection = set()
+    iteration = 0
+    while len(current_collection) > 0:
+        iteration += 1
+        next_collection = set()
+        for a in current_collection:
+            mini_collection, status = extend(a, m)
+            if status == DEAD:
+                for b in mini_collection:
+                    if gap(b, m) >= k:
+                        add_to_collection(total_collection, b, m)
+            else:
+                next_collection |= set(mini_collection)
+        # print("iteration", iteration, "ongoing", len(next_collection), "harvested", len(total_collection), file=sys.stderr)
+        current_collection = next_collection
+    Ts = total_collection
+    return Ts
+
+
 def minkowski(A, B, m):
     A_1 = np.nonzero(A)[0]
     B_1 = np.nonzero(B)[0]
@@ -77,13 +106,6 @@ def set_to_vec(T, m):
     v = np.zeros(m, dtype=int)
     v[list(T)] = 1
     return v
-
-
-def gap(T, m):
-    T = np.sort(np.array(list(T)))
-    diff = T[1:] - T[:-1]
-    last_diff = T[0] + m - T[-1]
-    return max((diff.max(), last_diff))
 
 
 def collect_all_minimals():
@@ -213,11 +235,17 @@ def main():
     m = 61
     epsilon = 0.3
     k = int(epsilon * m)
-    Ts = minimal_sets(m)
-    survivors = find_survivors(Ts, m, k)
     print(f"q = {m}")
-    print("number of minimal sets", len(Ts), file=sys.stderr)
-    print(f"number of holey survivors with epsilon={epsilon} k={k}: {len(survivors)}", file=sys.stderr)
+    do_it_smart = False
+    if do_it_smart:
+        survivors = holey_minimal_sets(m, k)
+        print(f"number of holey minimals with epsilon={epsilon} k={k}: {len(survivors)}")
+    else:
+        Ts = minimal_sets(m)
+        survivors = find_survivors(Ts, m, k)
+        print("number of minimal sets", len(Ts))
+        print(f"number of holey survivors with epsilon={epsilon} k={k}: {len(survivors)}")
+
     for T_set in survivors:
         print(len(T_set), tuple(sorted(T_set)), f"{gap(T_set, m) / m :.4f}")
 
@@ -233,17 +261,18 @@ def main():
 
 def lower_bound_loop():
     epsilon = 0.3
-    for m in range(3, 63, 2):
+    for m in range(3, 100, 2):
         k = int(epsilon * m)
-        Ts = minimal_sets(m)
-        survivors = find_survivors(Ts, m, k)
+        survivors = holey_minimal_sets(m, k)
+
+        # print(f"{m}\t{len(survivors)}") ; continue
+
         A_upper = solve(survivors, k, m)
         ub = A_upper.sum()
-        A_lower = solve(survivors, 0, m)
-        lb = A_lower.sum()
-        print(f"{m}\t{len(Ts)}\t{len(survivors)}\t{lb}\t{ub}")
-        import sys
-        sys.stdout.flush()
+        # A_lower = solve(survivors, 0, m)
+        # lb = A_lower.sum()
+        lb = 0
+        print(f"{m}\t{len(survivors)}\t{lb}\t{ub}")
 
 
 lower_bound_loop() ; exit()
