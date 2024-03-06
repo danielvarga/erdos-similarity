@@ -63,7 +63,7 @@ def minimal_sets(m):
     return Ts
 
 
-def minkowski(A, B):
+def minkowski(A, B, m):
     A_1 = np.nonzero(A)[0]
     B_1 = np.nonzero(B)[0]
     ms = (A_1[None, :] + B_1[:, None]) % m
@@ -73,7 +73,7 @@ def minkowski(A, B):
     return ApB
 
 
-def set_to_vec(T):
+def set_to_vec(T, m):
     v = np.zeros(m, dtype=int)
     v[list(T)] = 1
     return v
@@ -138,25 +138,27 @@ def my_cumulative(data):
 
 
 
-for m in range(3, 67, 2):
-    Ts = minimal_sets(m)
-    gaps = []
-    for T in Ts:
-        gaps.append(gap(T, m))
-    gaps = np.array(gaps)
-    # my_hist(gaps) ; plt.show()
-    my_cumulative(gaps)
-    print(f"{m}\t{len(Ts)}")
-    plt.savefig(f"epsilon-ratios/{m:03}.png")
-    plt.clf()
-exit()
+def generate_plots():
+    for m in range(3, 67, 2):
+        Ts = minimal_sets(m)
+        gaps = []
+        for T in Ts:
+            gaps.append(gap(T, m))
+        gaps = np.array(gaps)
+        # my_hist(gaps) ; plt.show()
+        my_cumulative(gaps)
+        print(f"{m}\t{len(Ts)}")
+        plt.savefig(f"epsilon-ratios/{m:03}.png")
+        plt.clf()
 
 
+# generate_plots() ; exit()
 
-def verify(A, Ts):
+
+def verify(A, Ts, m):
     for T_set in Ts:
-        T = set_to_vec(T_set)
-        if not np.all(minkowski(A, T) == 1):
+        T = set_to_vec(T_set, m)
+        if not np.all(minkowski(A, T, m) == 1):
             return False
     return True
 
@@ -166,7 +168,66 @@ def pretty(A):
     return "|" + "".join(map(str, A)).replace("0", ".").replace("1", "X") + "|"
 
 
-print("final number of sets", len(Ts), file=sys.stderr)
+
+def solve(Ts, prefix, m):
+    A = cp.Variable(m, boolean=True, name="A")
+    constraints = []
+    for x in range(m):
+        for T in Ts:
+            # A + T Minkowski sum covers x.
+            # equivalently A intersects T_prime
+            T_prime = [(x - y) % m for y in T]
+            constraint = sum(A[y] for y in T_prime) >= 1
+            constraints.append(constraint)
+
+    # the first `prefix` must all be 1:
+    constraints.append(A[:prefix].sum() == prefix)
+
+    random_seed = 1
+    verbose = False
+    env = gurobipy.Env()
+    env.setParam('Seed', int(random_seed))
+
+    ip = cp.Problem(cp.Minimize(cp.sum(A)), constraints)
+    ip.solve(solver="GUROBI", verbose=verbose, env=env)
+
+    A = A.value.astype(int)
+
+    assert verify(A, Ts, m)
+    return A
+
+
+def main():
+    m = 61
+    epsilon = 0.3
+    k = int(epsilon * m)
+    Ts = minimal_sets(m)
+    print(f"q = {m}")
+    print("number of minimal sets", len(Ts), file=sys.stderr)
+    A = np.zeros(m, dtype=int)
+    A[:k] = 1
+    survivors = []
+    for T_set in Ts:
+        T = set_to_vec(T_set, m)
+        if not np.all(minkowski(A, T, m) == 1):
+            survivors.append(T_set)
+    print(f"number of survivors with epsilon={epsilon} k={k}: {len(survivors)}", file=sys.stderr)
+    for T_set in survivors:
+        print(len(T_set), tuple(T_set))
+
+    A = solve(survivors, k, m)
+    print(f"when using epsilon={epsilon} interval, all minimal sets can be covered: |A| = {A.sum()}, ratio={A.sum() / m}")
+
+    A = solve(survivors, 0, m)
+    print(f"set A needed to cover just the {len(survivors)} holey sets: |A| = {A.sum()}, ratio={A.sum() / m}")
+
+main() ; exit()
+
+
+
+
+
+
 
 
 def find_optimal_interval_pair(Ts):
@@ -179,34 +240,12 @@ def find_optimal_interval_pair(Ts):
                 A = np.zeros(m, dtype=int)
                 A[:a1_end] = 1
                 A[a2_start: a2_end] = 1
-                if verify(A, Ts):
+                if verify(A, Ts, m):
                     return A
 
 
 # A = find_optimal_interval_pair(Ts) ; print(f"modulus {m}\t|A| {sum(A)}\tA {pretty(A)}") ; exit()
 
 
-A = cp.Variable(m, boolean=True, name="A")
-constraints = []
-for x in range(m):
-    for T in Ts:
-        # A + T Minkowski sum covers x.
-        # equivalently A intersects T_prime
-        T_prime = [(x - y) % m for y in T]
-        constraint = sum(A[y] for y in T_prime) >= 1
-        constraints.append(constraint)
-
-
-random_seed = 1
-verbose = True
-env = gurobipy.Env()
-env.setParam('Seed', int(random_seed))
-
-ip = cp.Problem(cp.Minimize(cp.sum(A)), constraints)
-ip.solve(solver="GUROBI", verbose=verbose, env=env)
-
-A = A.value.astype(int)
-
-assert verify(A, Ts)
 
 print(f"modulus {m}\t|A| {sum(A)}\tA {pretty(A)}")
