@@ -3,6 +3,7 @@ import argparse
 import numpy as np
 import cvxpy as cp
 import gurobipy
+import matplotlib.pyplot as plt
 
 
 m, = sys.argv[1:]
@@ -62,8 +63,6 @@ while len(current_collection) > 0:
             next_collection |= set(mini_collection)
     print("iteration", iteration, "ongoing", len(next_collection), "harvested", len(total_collection), file=sys.stderr)
     current_collection = next_collection
-
-
 Ts = total_collection
 
 
@@ -81,6 +80,47 @@ def set_to_vec(T):
     v = np.zeros(m, dtype=int)
     v[list(T)] = 1
     return v
+
+
+def gap(T):
+    T = np.sort(np.array(list(T)))
+    diff = T[1:] - T[:-1]
+    last_diff = T[0] + m - T[-1]
+    return max((diff.max(), last_diff))
+
+
+def my_hist(data):
+    values, counts = np.unique(data, return_counts=True)
+    plt.bar(values, counts)
+    plt.xticks(values) # Ensure each integer value has its own tick
+
+
+def my_cumulative(data):
+    x_values = np.arange(m + 1)
+    cumulative_counts = np.array([np.sum(data <= x - 1e-6) for x in x_values])
+    # percentages = 1 - cumulative_counts / len(data)
+    plt.plot(x_values / m, len(data) - cumulative_counts, marker='o')
+    # plt.xticks(x_values)
+    plt.yscale('log')
+    plt.title(f"$q = {m}$")
+    plt.xlabel("$\\epsilon$")
+    plt.ylabel("number of minimal sets with gap at least $\\epsilon$")
+    import matplotlib.ticker as ticker
+    plt.gca().yaxis.set_major_formatter(ticker.ScalarFormatter())
+    plt.gca().yaxis.set_major_locator(ticker.LogLocator(base=10.0, numticks=6))
+    # plt.gca().yaxis.set_minor_formatter(ticker.ScalarFormatter())
+    # plt.gca().yaxis.set_minor_locator(ticker.LogLocator(base=10.0, subs=np.arange(1,10)*0.1, numticks=5))
+
+
+gaps = []
+for T in Ts:
+    gaps.append(gap(T))
+gaps = np.array(gaps)
+# my_hist(gaps) ; plt.show()
+my_cumulative(gaps)
+plt.savefig(f"epsilon-ratios/{m:03}.png")
+exit()
+
 
 
 def verify(A, Ts):
