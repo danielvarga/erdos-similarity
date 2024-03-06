@@ -197,13 +197,8 @@ def solve(Ts, prefix, m):
     return A
 
 
-def main():
-    m = 61
-    epsilon = 0.3
-    k = int(epsilon * m)
-    Ts = minimal_sets(m)
-    print(f"q = {m}")
-    print("number of minimal sets", len(Ts), file=sys.stderr)
+
+def find_survivors(Ts, m, k):
     A = np.zeros(m, dtype=int)
     A[:k] = 1
     survivors = []
@@ -211,9 +206,20 @@ def main():
         T = set_to_vec(T_set, m)
         if not np.all(minkowski(A, T, m) == 1):
             survivors.append(T_set)
-    print(f"number of survivors with epsilon={epsilon} k={k}: {len(survivors)}", file=sys.stderr)
+    return survivors
+
+
+def main():
+    m = 61
+    epsilon = 0.3
+    k = int(epsilon * m)
+    Ts = minimal_sets(m)
+    survivors = find_survivors(Ts, m, k)
+    print(f"q = {m}")
+    print("number of minimal sets", len(Ts), file=sys.stderr)
+    print(f"number of holey survivors with epsilon={epsilon} k={k}: {len(survivors)}", file=sys.stderr)
     for T_set in survivors:
-        print(len(T_set), tuple(T_set))
+        print(len(T_set), tuple(sorted(T_set)), f"{gap(T_set, m) / m :.4f}")
 
     A = solve(survivors, k, m)
     print(f"when using epsilon={epsilon} interval, all minimal sets can be covered: |A| = {A.sum()}, ratio={A.sum() / m}")
@@ -221,31 +227,23 @@ def main():
     A = solve(survivors, 0, m)
     print(f"set A needed to cover just the {len(survivors)} holey sets: |A| = {A.sum()}, ratio={A.sum() / m}")
 
-main() ; exit()
+
+# main() ; exit()
 
 
+def lower_bound_loop():
+    epsilon = 0.3
+    for m in range(3, 63, 2):
+        k = int(epsilon * m)
+        Ts = minimal_sets(m)
+        survivors = find_survivors(Ts, m, k)
+        A_upper = solve(survivors, k, m)
+        ub = A_upper.sum()
+        A_lower = solve(survivors, 0, m)
+        lb = A_lower.sum()
+        print(f"{m}\t{len(Ts)}\t{len(survivors)}\t{lb}\t{ub}")
+        import sys
+        sys.stdout.flush()
 
 
-
-
-
-
-def find_optimal_interval_pair(Ts):
-    for size in range(1, m):
-        for a1_end in range(size, 0, -1):
-            for a2_start in range(a1_end + 1, m):
-                a2_end = a2_start + size - a1_end
-                if not 0 <= a2_end <= m:
-                    continue
-                A = np.zeros(m, dtype=int)
-                A[:a1_end] = 1
-                A[a2_start: a2_end] = 1
-                if verify(A, Ts, m):
-                    return A
-
-
-# A = find_optimal_interval_pair(Ts) ; print(f"modulus {m}\t|A| {sum(A)}\tA {pretty(A)}") ; exit()
-
-
-
-print(f"modulus {m}\t|A| {sum(A)}\tA {pretty(A)}")
+lower_bound_loop() ; exit()
