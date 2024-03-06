@@ -34,7 +34,7 @@ def add_to_collection(total_collection, a, m):
     for k in range(m):
         b = frozenset(rotate(a, k, m))
         for c in total_collection:
-            if c.issubset(a):
+            if c.issubset(b):
                 needed = False
                 break
         if not needed:
@@ -79,35 +79,39 @@ def set_to_vec(T):
     return v
 
 
-def gap(T):
+def gap(T, m):
     T = np.sort(np.array(list(T)))
     diff = T[1:] - T[:-1]
     last_diff = T[0] + m - T[-1]
     return max((diff.max(), last_diff))
 
 
-Ts_dict = {}
-for m in range(41, 61, 2):
-    Ts = minimal_sets(m)
-    Ts_dict[m] = Ts
-    gaps = []
-    for T in Ts:
-        gaps.append(gap(T))
-    gaps = np.array(gaps)
-    if len(gaps) >= 10:
-        tenth = np.sort(gaps)[-10]
-    else:
-        tenth = np.sort(gaps)[0]
-    print(f"q={m}\t|Ts|={len(minimal_sets(m))}\ttenth={tenth}\tlargest={gaps.max()}")
-    for T in Ts:
-        if gap(T) >= tenth:
-            print(gap(T), tuple(T))
-exit()
+def collect_all_minimals():
+    Ts_dict = {}
+    for m in range(3, 51, 2):
+        Ts = minimal_sets(m)
+        Ts_dict[m] = Ts
+        gaps = []
+        for T in Ts:
+            gaps.append(gap(T, m))
+        gaps = np.array(gaps)
+        if len(gaps) >= 10:
+            tenth = np.sort(gaps)[-10]
+        else:
+            tenth = np.sort(gaps)[0]
+        print(f"q={m}\t|Ts|={len(minimal_sets(m))}\ttenth={tenth}\tlargest={gaps.max()}")
+        show_sample = False
+        if show_sample:
+            for T in Ts:
+                if gap(T) >= tenth:
+                    print(gap(T, m), tuple(T))
 
-import pickle
-with open("minimal_sets.pkl", "wb") as f:
-    pickle.dump(Ts_dict, f)
-exit()
+    import pickle
+    with open("minimal_sets.pkl", "wb") as f:
+        pickle.dump(Ts_dict, f)
+
+
+# collect_all_minimals() ; exit()
 
 
 def my_hist(data):
@@ -133,13 +137,18 @@ def my_cumulative(data):
     # plt.gca().yaxis.set_minor_locator(ticker.LogLocator(base=10.0, subs=np.arange(1,10)*0.1, numticks=5))
 
 
-gaps = []
-for T in Ts:
-    gaps.append(gap(T))
-gaps = np.array(gaps)
-# my_hist(gaps) ; plt.show()
-my_cumulative(gaps)
-plt.savefig(f"epsilon-ratios/{m:03}.png")
+
+for m in range(3, 67, 2):
+    Ts = minimal_sets(m)
+    gaps = []
+    for T in Ts:
+        gaps.append(gap(T, m))
+    gaps = np.array(gaps)
+    # my_hist(gaps) ; plt.show()
+    my_cumulative(gaps)
+    print(f"{m}\t{len(Ts)}")
+    plt.savefig(f"epsilon-ratios/{m:03}.png")
+    plt.clf()
 exit()
 
 
