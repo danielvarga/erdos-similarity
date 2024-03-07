@@ -261,7 +261,7 @@ def main():
 
 def lower_bound_loop():
     epsilon = 0.3
-    for m in range(3, 100, 2):
+    for m in range(3, 200, 2):
         k = int(epsilon * m)
         survivors = holey_minimal_sets(m, k)
 
@@ -269,10 +269,11 @@ def lower_bound_loop():
 
         A_upper = solve(survivors, k, m)
         ub = A_upper.sum()
-        # A_lower = solve(survivors, 0, m)
-        # lb = A_lower.sum()
-        lb = 0
+        A_lower = solve(survivors, 0, m)
+        lb = A_lower.sum()
         print(f"{m}\t{len(survivors)}\t{lb}\t{ub}")
+        print(m, "lower", pretty(A_lower))
+        print(m, "upper", pretty(A_upper))
 
 
 lower_bound_loop() ; exit()
