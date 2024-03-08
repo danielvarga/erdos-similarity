@@ -35,6 +35,15 @@ def gap(T, m):
     return max((diff.max(), last_diff))
 
 
+def gap_position(T, m):
+    T = np.sort(np.array(list(T)))
+    diff = T[1:] - T[:-1]
+    last_diff = T[0] + m - T[-1]
+    diff = np.append(diff, [last_diff])
+    gp_index = np.argmax(diff)
+    return T[gp_index], diff[gp_index]
+
+
 def add_to_collection(total_collection, a, m):
     needed = True
     # forall k rotation, forall c in total_collection
@@ -257,6 +266,36 @@ def main():
 
 
 # main() ; exit()
+
+
+
+def gap_position_of_uglies():
+    epsilon = 0.3
+    for m in [21]:
+        print("===")
+        print(f"q = {m}")
+        k = int(epsilon * m)
+        survivors = holey_minimal_sets(m, k)
+        for T in survivors:
+            position, gap_size = gap_position(T, m)
+            print(position / m, gap_size / m, list(sorted(T)))
+
+
+# gap_position_of_uglies() ; exit()
+
+
+def size_of_uglies():
+    epsilon = 0.2
+    for m in [67, 71]: # range(11, 81, 2):
+        k = int(epsilon * m)
+        survivors = holey_minimal_sets(m, k)
+        sizes = np.array(sorted([len(T) for T in survivors]))
+        print(m, sizes)
+        plt.hist(sizes)
+        plt.show()
+
+
+size_of_uglies() ; exit()
 
 
 def lower_bound_loop():
