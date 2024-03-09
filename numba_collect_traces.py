@@ -183,6 +183,8 @@ assert gap_fast(np.array([0,0,0,1,0,0,0,1,0])) == 4
 # gap must be at least k
 @numba.njit
 def holey_minimal_sets_fast(m, k):
+    MAXIMAL_ONGOING = 1000000
+    next_collection = np.empty((MAXIMAL_ONGOING, m), dtype=np.int8)
     initial = np.zeros(m, dtype=np.int8)
     initial[1] = 1
     current_collection = initial.reshape((1, -1))
@@ -190,7 +192,8 @@ def holey_minimal_sets_fast(m, k):
     iteration = 0
     while len(current_collection) > 0:
         iteration += 1
-        next_collection = []
+        next_collection = np.empty((MAXIMAL_ONGOING, m), dtype=np.int8)
+        next_collection_cursor = 0
         current_tails = np.argmax(current_collection, axis=1)
         for a, tail in zip(current_collection, current_tails):
             (mini_collection, status) = extend_fast(a, tail)
@@ -202,11 +205,10 @@ def holey_minimal_sets_fast(m, k):
                 for b in mini_collection:
                     # TODO we should add (b!=0).astype(np.int8),
                     # because we don't care about order of introduction.
-                    next_collection.append(b)
-        next_collection_2 = np.empty((len(next_collection), m), dtype=np.int8)
-        for i in range(len(next_collection)):
-            next_collection_2[i] = next_collection[i]
-        next_collection = next_collection_2
+                    next_collection[next_collection_cursor] = b
+                    next_collection_cursor += 1
+                    assert next_collection_cursor <= MAXIMAL_ONGOING
+        next_collection = next_collection[:next_collection_cursor]
         # print("next_collection before unique", len(next_collection))
         if len(next_collection) == 0:
             print("no more ongoing")

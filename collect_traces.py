@@ -94,7 +94,9 @@ def holey_minimal_sets(m, k):
                     if gap(b, m) >= k:
                         add_to_collection(total_collection, b, m)
             else:
-                next_collection |= set(mini_collection)
+                for b in mini_collection:
+                    if gap(b, m) >= k:
+                        next_collection.add(b)
         # print("iteration", iteration, "ongoing", len(next_collection), "harvested", len(total_collection), file=sys.stderr)
         current_collection = next_collection
     Ts = total_collection
