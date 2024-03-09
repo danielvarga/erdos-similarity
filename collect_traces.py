@@ -44,6 +44,22 @@ def gap_position(T, m):
     return T[gp_index], diff[gp_index]
 
 
+def minkowski(A, B, m):
+    A_1 = np.nonzero(A)[0]
+    B_1 = np.nonzero(B)[0]
+    ms = (A_1[None, :] + B_1[:, None]) % m
+    ApB_1 = np.unique(ms.flatten())
+    ApB = np.zeros_like(A)
+    ApB[ApB_1] = 1
+    return ApB
+
+
+def set_to_vec(T, m):
+    v = np.zeros(m, dtype=int)
+    v[list(T)] = 1
+    return v
+
+
 def add_to_collection(total_collection, a, m):
     needed = True
     # forall k rotation, forall c in total_collection
@@ -103,20 +119,24 @@ def holey_minimal_sets(m, k):
     return Ts
 
 
-def minkowski(A, B, m):
-    A_1 = np.nonzero(A)[0]
-    B_1 = np.nonzero(B)[0]
-    ms = (A_1[None, :] + B_1[:, None]) % m
-    ApB_1 = np.unique(ms.flatten())
-    ApB = np.zeros_like(A)
-    ApB[ApB_1] = 1
-    return ApB
+def pretty(A):
+    assert np.all(np.logical_or(A == 0, A == 1))
+    return "|" + "".join(map(str, A)).replace("0", ".").replace("1", "X") + "|"
 
 
-def set_to_vec(T, m):
-    v = np.zeros(m, dtype=int)
-    v[list(T)] = 1
-    return v
+def pretty_set(T, m):
+    return pretty(set_to_vec(T, m))
+
+
+def test_holey_minimal_sets():
+    # m = 501 ; k = int(m * 0.45)
+    m = 71 ; k = int(m * 0.4)
+    for T in holey_minimal_sets(m, k):
+        print(pretty_set(T, m))
+    print(m, k, len(holey_minimal_sets(m, k)))
+
+
+# test_holey_minimal_sets() ; exit()
 
 
 def collect_all_minimals():
@@ -196,12 +216,6 @@ def verify(A, Ts, m):
     return True
 
 
-def pretty(A):
-    assert np.all(np.logical_or(A == 0, A == 1))
-    return "|" + "".join(map(str, A)).replace("0", ".").replace("1", "X") + "|"
-
-
-
 def solve(Ts, prefix, m):
     A = cp.Variable(m, boolean=True, name="A")
     constraints = []
@@ -219,7 +233,7 @@ def solve(Ts, prefix, m):
     random_seed = 1
     verbose = False
     env = gurobipy.Env()
-    env.setParam('Seed', int(random_seed))
+    # env.setParam('Seed', int(random_seed))
 
     ip = cp.Problem(cp.Minimize(cp.sum(A)), constraints)
     ip.solve(solver="GUROBI", verbose=verbose, env=env)
@@ -240,6 +254,34 @@ def find_survivors(Ts, m, k):
         if not np.all(minkowski(A, T, m) == 1):
             survivors.append(T_set)
     return survivors
+
+
+def iterative_narrowing(m):
+    last_set_count = 0
+    for k in range(m, 1, -1):
+        survivors = holey_minimal_sets(m, k)
+        set_count = len(survivors)
+        if set_count == 0:
+            continue
+
+
+        # things are starting to slow down too much:
+        if len(survivors) > 30:
+            break
+
+        if set_count == last_set_count:
+            # we already have this information
+            continue
+        last_set_count = set_count
+        print(m, k, set_count)
+        for T in survivors:
+            print(list(T))
+
+        A = solve(survivors, 0, m)
+        print(f"set A needed to cover just the {len(survivors)} holey sets: |A| = {A.sum()}, ratio={A.sum() / m}")
+
+
+iterative_narrowing(87) ; exit()
 
 
 def main():
