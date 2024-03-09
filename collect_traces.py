@@ -256,6 +256,67 @@ def find_survivors(Ts, m, k):
     return survivors
 
 
+
+# TODO that's a super dumb way to construct these,
+# the proper way is repeated halving starting from m+start.
+def easy_minimal_sets_starting_at(m, start):
+    current_collection = [[start]]
+    total_collection = []
+    iteration = 0
+    while len(current_collection) > 0:
+        iteration += 1
+        next_collection = []
+        for a in current_collection:
+            tail = a[-1]
+            t0 = 2 * tail
+            t1 = 2 * tail + 1
+            for next_tail in (2 * tail, 2 * tail + 1):
+                if next_tail < m:
+                    next_collection.append(a + [next_tail])
+                elif next_tail % m == start:
+                    total_collection.append(a)
+        current_collection = next_collection
+        # print(iteration, len(current_collection), len(total_collection))
+    return total_collection
+
+
+# these start somewhere not necessarily at 1, double until
+# they wrap around, and then they have to exactly hit their first element
+def easy_minimal_sets(m):
+    total_collection = []
+    for start in range(1, m):
+        collection = easy_minimal_sets_starting_at(m, start)
+        total_collection += collection
+    return total_collection
+
+
+for m in range(11, 131, 2):
+    survivors = easy_minimal_sets_starting_at(m, 1)
+    # for T in survivors: print(T)
+    A = solve(survivors, 0, m)
+    print(f"{m}\t{sum(A)}\t{pretty(A)}")
+    
+
+exit()
+
+
+def test_easy_minimal_sets():
+    m = 61
+    lg = -1
+    k = 1
+    while k < m:
+        k *= 2
+        lg += 1
+    print(f"kinda log_2({m}) = {lg}")
+    for start in range(1, m, 10):
+        lb = start * 2 ** lg
+        ub = (start + 1) * 2 ** lg - 1
+        print(start, lb, ub)
+
+
+easy_minimal_sets() ; exit()
+
+
 def iterative_narrowing(m):
     last_set_count = 0
     for k in range(m, 1, -1):
